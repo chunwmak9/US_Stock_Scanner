@@ -7,6 +7,7 @@ from datetime import date
 import datetime
 import yahoo_fin.stock_info as stock_info
 import time
+import math
 
 class StockGetter(object):
     def __init__(self): #initial setup parameters here e.g year ,duration,number of data
@@ -23,10 +24,13 @@ class StockGetter(object):
     #The plot will be store on a parameters "plt" and WILL NOT be automatically plotted out
     def price_plot_data(self,data,methods,functions,key="Open"):
         global plt
-        x = np.array([i for i in range(len(data[key]))])
+        x = np.array([i for i in range(len(data))])
+        # x_date = x #data[key].index 
         y = data[key]
-
-        
+        # print("Data:{}".format(len(data[key].index)))
+        # print(len(y))
+        plt.grid()
+        plt.tight_layout(pad=3.0)
         for i in methods:
             if i == "line":
                 plt.plot(x,y,color="green")
@@ -67,12 +71,16 @@ class StockGetter(object):
                 #print(ret_func)
                 #print(y_open['2021-09-13'])
                 #print(y_close['2021-09-13'])
+                
                 plt.title("{} Daily Return Rate".format(self.token))
                 plt.xlabel('Return Rate(%)')
                 plt.ylabel('Frequency')
                 ret_func_mean = ret_func.mean()
                 hist = plt.hist(ret_func,bins=100)
+                total = math.pow(1+(ret_func_mean/100),len(x))*100 - 100 #total P&L
+                #total = ret_func.sum() /100
                 plt.annotate("Mean Return Rate = {}%".format(str(ret_func_mean)),(ret_func_mean,hist[0].max()))
+                plt.annotate("Average total P&L between {} and {} = {}%".format(str(self.start_date),str(self.end_date),str(round(total,6))),(ret_func_mean,hist[0].mean()))
                 plt.axvline(ret_func_mean,color="magenta")
                 plt.hist(ret_func,bins=100)
             elif f == "sentiment score":

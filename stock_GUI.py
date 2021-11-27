@@ -11,6 +11,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sentiments as se
 
 
+from keywords_trend import keywords
+
+
+
 class user_interface(object):
     def __init__(self,stock_data):
         self.stock_data = stock_data
@@ -65,8 +69,11 @@ class user_interface(object):
                         stock = self.gui_list.get(s)
                         print("You selected {}".format(self.gui_list.get(s)))
                         #Selected data
+                        trend = keywords.Trends()
+
                         sg = sdata.StockGetter()
-                        data = sg.get_data('2020-1-1',now,self.gui_list.get(s))
+                        start_date = '2021-2-8' #trend.get_start_date(stock)  #'2020-1-1'
+                        data = sg.get_data(start_date,now,self.gui_list.get(s))
                         #Keys: ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
                         method1= ['scatter','line']
                         function1 = ['regression','mean','volatility']
@@ -76,14 +83,23 @@ class user_interface(object):
                         function3 = ['sentiment score']
 
                         plt.figure(figsize=(15,7))
-                        plt.subplot(1,2,1)
+                        # plt.tight_layout(pad=3.0)
+                        # plt.grid()
+                        
+                        plt.subplot(2,2,1)
                         sg.price_plot_data(data,method1,function1,'Open')
-                        plt.subplot(1,2,2)
+                        plt.subplot(2,2,2)
                         sg.price_plot_data(data,method2,function2)
-                        plt.figure(figsize=(15,7))
+                        #plt.figure(figsize=(15,7))
+                        plt.subplot(2,2,3)
                         sg.price_plot_data(data,method3,function3)
-                        plt.grid()
-                        self.window.destroy()
+                        plt.subplot(2,2,4)
+                        
+                        trend.search("{} stock".format(stock),date = start_date+" "+now,plot=True)
+                        
+                        #self.window.destroy()
+
+                        
                         # def pop_up_news(stock):
                         #     news_win = Tk()
                         #     news_win.geometry("1000x600+600+600")
