@@ -95,7 +95,11 @@ class user_interface(object):
                         sg.price_plot_data(data,method3,function3)
                         plt.subplot(2,2,4)
                         
-                        trend.search("{} stock".format(stock),date = start_date+" "+now,plot=True)
+                        trend_kw = "{} stock".format(stock)
+                        sug_kws = trend.trends.suggestions(trend_kw)
+                        if len(sug_kws)>=1:
+                            trend_kw = sug_kws[0]["title"]
+                        trend.search(trend_kw,date = start_date+" "+now,plot=True)
                         
                         #self.window.destroy()
 
