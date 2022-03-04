@@ -10,40 +10,68 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sentiments as se
 
-
+import yfinance as yf
 from keywords_trend import keywords
+
+from stock_data import HKStock_Getter
 
 
 
 class user_interface(object):
     def __init__(self,stock_data):
         self.stock_data = stock_data
+        self.news_lines = ""
+        self.index = -1
+        self.value = -1
         return self.GUI()
         
     def GUI(self):
         self.window = Tk()
         self.window.title("Stock Screener")
         self.window.geometry("600x200+500+200")
+        
         def scrollbar(kw):
             try:
-                self.window.destroy()
+                #self.window.destroy()
                 self.window = Tk()
                 self.window.title("Stock Screener")
                 self.window.geometry("1400x600+500+200")
                 self.scrollbar = Scrollbar(self.window)
                 self.scrollbar.pack(side=RIGHT,fill=Y)
-                self.text = StringVar()
-                self.news = Label(self.window,textvariable=self.text)
+                self.text = StringVar(self.window)
+                self.news = Text(self.window,height=300, width=500)
+                
+                #Stock Option Menu                
+                self.selected_option = StringVar()
+                self.selected_option.set("NEWS")
+                options_menu = ["NEWS","Information","Balance Sheet"]
+
+                def option_check():
+                    #Option menu selection
+                    if self.selected_option.get()== "NEWS":
+                        self.text.set("NEWS \n \n \n"+self.news_lines)
+                    elif self.selected_option.get()== "Balance Sheet":
+                        self.text.set(get_stock_info("balance sheet"))
+                    else:
+                        self.text.set(get_stock_info("other"))
+                    self.news.delete(1.0, END)
+                    self.news.insert(END,self.text.get())
+                    
+                def options_select(evt):
+                    option_check()
+                
+                
                 def onselect(evt):
                     w =  evt.widget
-                    index = int(w.curselection()[0])
-                    value = w.get(index)
+                    if self.index== -1:
+                        self.index = int(w.curselection()[0])
+                    self.value = w.get(self.index)
                     sent = se.sentiments()
-                    news = sent.get_news([value])
-                    news_lines =""
-                    if len(news[value])>15:
-                        news[value] = news[value][:16]
-                    for l in news[value]:
+                    news = sent.get_news([self.value])
+                    self.news_lines  =""
+                    if len(news[self.value])>15:
+                        news[self.value] = news[self.value][:16]
+                    for l in news[self.value]:
                         #news_lines+= " ".join(l[0:])  +"\n"
                         # if len(l[3])>30:
                         #     while True:
@@ -54,16 +82,38 @@ class user_interface(object):
 
                         AL = " ".join(l[0:])
                         
-                        news_lines+= AL
-                        news_lines+="\n"+"\n"
-
-                    self.text.set("NEWS \n \n \n"+news_lines)
-
+                        self.news_lines += AL
+                        self.news_lines+="\n"+"\n"
+                    #Select Checking
+                    option_check()
+                   
+                
                 self.gui_list = Listbox(self.window,yscrollcommand = self.scrollbar.set)
                 self.gui_list.bind('<<ListboxSelect>>', onselect)
                 selected_stock_data = [d for d in self.stock_data if kw.upper() in d ]
                 for token in selected_stock_data:
                     self.gui_list.insert(END,str(token))
+
+                def get_stock_info(info):
+                    stock = ""
+
+                    for s in self.gui_list.curselection():
+                        stock = self.gui_list.get(s)
+                    if stock == "":
+                        return ""
+                    if info == "balance sheet":
+                        return str(yf.Ticker(stock).balance_sheet)
+                    elif info == "other":
+                        INFO = ""
+                        yinfo = yf.Ticker(stock).info
+                        for k in yinfo.keys():
+                            INFO+=str(k)+" : "+str(yinfo[k])+"\n"
+
+                        return str(yf.Ticker(stock).calendar)+"\n" +str(yf.Ticker(stock).financials)+"\n" +INFO+"\n" +str(yf.Ticker(stock).earnings)+"\n"+"\n" +str(yf.Ticker(stock).earnings)+"\n Holders of Stock"+str(yf.Ticker(stock).major_holders)+"\n"+str(yf.Ticker(stock).institutional_holders)
+
+                        
+
+
                 def select_item():
                     for s in self.gui_list.curselection():
                         stock = self.gui_list.get(s)
@@ -128,20 +178,26 @@ class user_interface(object):
                         #pop_up_news(stock)
                         
                         plt.show()
-
+                self.opt = OptionMenu(self.window, self.selected_option,*options_menu,command=options_select)
 
                 
                 #Enter button
                 self.btn1 = Button(self.window,text = "Select",command=select_item)
                 
-                self.btn1.pack(side="bottom")
+
+
+                
+                self.btn1.pack(in_=self.window,side="bottom")
+                #self.btn3.pack(in_=self.window,side= "left")
                 self.gui_list.pack(side=LEFT,fill=BOTH)
-                self.news.pack(side="top",fill=BOTH)
+                self.opt.pack(side="bottom",fill=X)
+                self.news.pack(side="top",fill=Y)
                 #self.btn1.grid(row=1,column=1)
                 #self.gui_list.grid(row=0,column=0)
                 #self.news.grid(row=0,column=1)
-
+                
                 self.scrollbar.config(command=lambda:self.gui_list.size(2))
+                self.window.mainloop()
             except:
                 raise Exception("Please Enter a valid value again.")
 
@@ -159,7 +215,8 @@ class user_interface(object):
         self.label1.pack()
         self.text1.pack()
         self.btn2.pack()
-
+        
+        
         self.window.mainloop()
     
     
@@ -177,10 +234,13 @@ if __name__ == "__main__":
     dow = stock_info.tickers_dow()
     sp500 = stock_info.tickers_sp500()
     other_stocks = stock_info.tickers_other()
-    tokens = naq+dow+sp500+other_stocks # all stock data input
+    hkex_stocks = HKStock_Getter().get_codes()
+    hkex_tickers = [hkex_stocks[i][0] for i in range(len(hkex_stocks))]
+    #hkex_names= [hkex_stocks[i][1] for _ in range(len(hkex_stocks))]
+    tokens = naq+dow+sp500+other_stocks+hkex_tickers # all stock data input
     app = user_interface(tokens) #input stock data
 
-
+    #print(easyquotation.use("hkquote"))
     
     """
     i = 0
